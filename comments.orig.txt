@@ -1,0 +1,120 @@
+----------------------- REVIEW 1 ---------------------
+PAPER: 3024
+TITLE: Using Discourse Signals for Robust Instructor Intervention Prediction
+AUTHORS: Muthu Kumar Chandrasekaran, Carrie Demmans Epp, Min-Yen Kan and Diane J. Litman
+
+Significance: 2 (modest or incremental contribution)
+Soundness: 2 (minor inconsistencies or small fixable errors)
+Scholarship: 3 (excellent coverage of related work)
+Clarity: 2 (more or less readable)
+Breadth of Interest: 2 (interest limited to specialty area)
+SUMMARY RATING: 2 (++)
+
+----------- Summarize the Main Contribution of the Paper -----------
+Proposes and evaluates use of discourse features for improving a binary 
+classifier for predicting if a human instructor will intervene in a 
+thread on an educational discussion board.
+
+----------- Comments for the Authors -----------
+Moving beyond building a classifier with better features or 
+more/different data, I would recommend the primary author to think deeply 
+about the relevance of the problem and how it informs (a) the interpretation 
+of your current results and (b) direction of your next steps.
+
+Some thoughts, questions and comments that might help follow:
+
+1. Why is the work specifically situated in the context of MOOCs? Isn't 
+this problem and its solution more broadly applicable to educational discussion 
+forum or even moderated discussion forums in general?
+
+2. In its current formulation, the prediction task seems to be if a human 
+instructor will intervene in a discussion thread. Caveat of predicting only 
+the first intervention is reasonable. However, considering the application 
+scenarios, would it not be necessary to not only predict if a human instructor 
+will intervene, but also (approximately) when? I think it would be useful to 
+include con-ops for use of this prediction module to augment discussion forums 
+where moderators are heavily burdened.
+
+3. Table 2: Is the distribution of tags for MOOC corpus based on tags generated 
+by discourse parser or through manual labeling? If the former, the possibility 
+of the discourse parser being biased to match its training distribution of tags 
+should be considered? I don't think this table makes a valuable point that is 
+not made elsewhere in that section.
+
+4. Table 3: Why are some of the rows zeros? Please double check if this is an error.
+
+5. It appears precision is low-to-medium in most cases. One possibility may be 
+that the classifier is over predicting intervention labels. Would be useful to 
+include the following information: (a) How many (#) thread does the classifier 
+predict a human intervention? (b) How is the model's operating points selected?
+
+6. Table 5: Macro Avg. row has an error (0.6 should be 2.6)
+
+7. One of the contributions in your paper is that of the technique to use 
+out-domain cross validation. In all experimental setups, on average this 
+leads to improvements. Most interesting is the result noticeable across 
+table 3 & 4 for E+P where macro and weight macro averages increase by 
+5.4% and 5.7% respectively. This is the most substantial improvement in your 
+results (in vs. out comparison for PDTB does not count because its the lowest 
+baseline). However, this improvement is not even explicitly noted in your write 
+up.
+
+----------------------- REVIEW 2 ---------------------
+PAPER: 3024
+TITLE: Using Discourse Signals for Robust Instructor Intervention Prediction
+AUTHORS: Muthu Kumar Chandrasekaran, Carrie Demmans Epp, Min-Yen Kan and Diane J. Litman
+
+Significance: 2 (modest or incremental contribution)
+Soundness: 3 (correct)
+Scholarship: 3 (excellent coverage of related work)
+Clarity: 2 (more or less readable)
+Breadth of Interest: 2 (interest limited to specialty area)
+SUMMARY RATING: 1 (+ (weak accept))
+
+----------- Summarize the Main Contribution of the Paper -----------
+This paper presents a novel idea of utilizing discourse connectives as 
+features for predicting whether instructors provide intervention in MOOC 
+discussions. Compared to prior work, the proposed method performed better 
+in some cases.
+
+----------- Comments for the Authors -----------
+The discussion of research question 2 and Table 5 is somewhat confusing. 
+Is the comparison between EDM'15 and EDM'15+PDTB like the rest of the paper?
+
+This is more of a suggestion on the format. The authors could consider add 
+a paragraph towards the end of the Introduction session to discuss the novelty 
+of the work and contributions.
+
+----------------------- REVIEW 3 ---------------------
+PAPER: 3024
+TITLE: Using Discourse Signals for Robust Instructor Intervention Prediction
+AUTHORS: Muthu Kumar Chandrasekaran, Carrie Demmans Epp, Min-Yen Kan and Diane J. Litman
+
+Significance: 2 (modest or incremental contribution)
+Soundness: 3 (correct)
+Scholarship: 3 (excellent coverage of related work)
+Clarity: 3 (crystal clear)
+Breadth of Interest: 2 (interest limited to specialty area)
+SUMMARY RATING: 2 (++)
+
+----------- Summarize the Main Contribution of the Paper -----------
+The paper aims to improve the method of predicting when an instructor 
+intervenes in a discussion thread in MOOCs. It proposes to consider the 
+use of discourse signals as important cues.
+
+----------- Comments for the Authors -----------
+What I like about this paper is that
+- the paper is written well
+- the argumentation is clear
+- several data sources are considered and compared
+- the data and algorithms are well-described
+- the discussion goes further than summarising the results but adds 
+new insight into the results by further analysis
+
+
+I am curious to learn more about the precise discourse relations 
+that are most relevant.
+Also, the application seems a bit limited. Could these techniques and 
+insight also be relevant for other applications in the field?
+
+------------------------------------------------------

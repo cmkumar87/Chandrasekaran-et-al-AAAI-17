@@ -1,0 +1,1416 @@
+\documentclass[letterpaper]{article}
+\usepackage{aaai17}
+\usepackage{times}
+\usepackage{helvet}
+\usepackage{courier}
+\usepackage{url}
+\usepackage{latexsym}
+\usepackage{xparse}
+
+\newsavebox{\fminipagebox}
+\NewDocumentEnvironment{fminipage}{m O{\fboxsep}}
+ {\par\kern#2\noindent\begin{lrbox}{\fminipagebox}
+  \begin{minipage}{#1}\ignorespaces}
+ {\end{minipage}\end{lrbox}%
+  \makebox[#1]{%
+    \kern\dimexpr-\fboxsep-\fboxrule\relax
+    \fbox{\usebox{\fminipagebox}}%
+    \kern\dimexpr-\fboxsep-\fboxrule\relax
+  }\par\kern#2
+ }
+ 
+\frenchspacing
+\setlength{\pdfpagewidth}{8.5in}
+\setlength{\pdfpageheight}{11in}
+\pdfinfo{
+/Title (Using Discourse Signals for Robust Instructor Intervention Prediction)
+/Author (Muthu Kumar Chandrasekaran, Carrie Demmans Epp, Min-Yen Kan, Diane Litman)
+/keywords (MOOC discussion forum, MOOC, Instructor intervention, PDTB discourse relations)}
+
+\setcounter{secnumdepth}{0}  
+ \begin{document}
+% The file aaai.sty is the style file for AAAI Press 
+% proceedings, working notes, and technical reports.
+%
+\title{Using Discourse Signals for Robust Instructor Intervention Prediction}
+%\title{Do student's post discourse signal instructor intervention in MOOC forums?}
+% \title{A Comprehensive Study of Discourse Signals Help predicting Instructor Intervention in MOOCs: Automatic Discourse Parsing Features}
+\author{Muthu Kumar Chandrasekaran$^1$, Carrie Demmans Epp$^{2,3}$, 
+		 Min-Yen Kan$^{1,4}$, Diane Litman$^{2,5}$ \\ 
+$^1$ Department of Computer Science, School of Computing, National University of Singapore\\
+$^2$ Learning Research and Development Center, University of Pittsburgh\\
+$^3$ University Center for Teaching and Learning, University of Pittsburgh\\
+$^4$ Interactive and Digital Media Institute, National University of Singapore, Singapore\\
+$^5$ Department of Computer Science, University of Pittsburgh\\
+\{muthu.chandra, kanmy\}@comp.nus.edu.sg\hspace{1cm}\{cdemmans,dlitman\}@pitt.edu
+}
+
+\maketitle
+\begin{abstract}
+We tackle the prediction of instructor intervention in student posts from 
+discussion forums %threads 
+in Massive Open Online Courses (MOOCs). Our key finding is 
+that using automatically obtained discourse relations improves the 
+prediction of when instructors intervene in student discussions, when compared 
+with a state-of-the-art, feature-rich baseline. Our supervised classifier makes 
+use of an automatic discourse parser which outputs Penn Discourse 
+Treebank (PDTB) tags that represent in-post discourse features. 
+We show %that 
+PDTB relation-based 
+features increase the robustness of the classifier and complement baseline 
+features in recalling more diverse instructor intervention patterns. In 
+comprehensive experiments over 14 %different 
+MOOC offerings from %across 
+several disciplines, the PDTB discourse features improve performance on average. 
+The resultant models are less dependent on domain-specific vocabulary, allowing 
+them to better generalize to new courses.
+\end{abstract}
+
+\section{Introduction}
+\label{sect:intro}
+Massive Open Online Courses (MOOCs) aim to scale learning by creating 
+virtual classrooms that eliminate the need for students to be co-located 
+with instructional staff and each other. To facilitate interaction, MOOC 
+platforms have discussion forums where students can interact with instructional 
+staff -- hereafter called {\it instructors} -- and their classmates. Forums are 
+typically the only mode of interaction between instructors and 
+students. Forums often contain hundreds of posts from several thousand 
+students, each post competing with others for instructor attention.  
+Reading and responding to student queries in forums is an essential teaching 
+activity that helps instructors gauge student understanding of course 
+content. Intervention is argued to facilitate student learning where an 
+instructor's presence 
+and intervention in student discussions improves learning 
+outcomes in MOOCs~\cite{chen2016} and other online learning environments ~\cite{garrison_critical_1999,phirangee_exploring_2016}. 
+However, instructors need to be selective when answering student posts due to 
+their limited bandwidth. One selection strategy is to respond 
+to posts that will maximally benefit the most students in a course. 
+Along these lines, \citeauthor{chandrasekaran2015towards} (\citeyear{chandrasekaran2015towards}) 
+proposed an intervention taxonomy based on transactive discourse that details 
+the situations in which certain types of interventions would maximally benefit 
+students. 
+%modified sentence start 
+%They hypothesized certain types of instructor interventions would
+%affect learning more than others. 
+%modified sentence end
+%I don't think what was presented is effective for our argument. So, I've commented out the reworked sentence and proposed a different connection to the next paragraph (with the old connection commented out
+%They hypothesize instructors to effect more learning via certain intervention 
+%types (e.g., critique) than others (e.g., clarification). So, an instructor, for 
+%example, could choose to critique a student's thought instead of answering a 
+%question with a fact.
+%CADE - I don't understand this sentence (16 Nov. 2016)
+%Muthu - How about now?
+%CADE - I think I understand what is being said better but It's not clear why it's here (how it contributes to the argument, especially since the example contrasts two response options that aren't equally appropriate in both situations . I've reworked the prose so that they're more direct. Also, if it was hypothesized, what was tested? How did that turn out? I think it leaves too many questions open. I've instead summarized what a quick skim indicated was the purpose of the taxonomy
+%Muthu - on our hypothesis test. It's a research-in-progress paper. In the IS %community people publish their idea first and follow-up with a paper with results. We are working on using the taxonomy to code a MOOC corpus.
+
+%previous connective start
+%Earlier work %end previous connective
+Consistent with this taxonomy, \citeauthor{chandrasekaran2015learning} 
+showed that intervention strategies in MOOC forums differ widely.
+The factors behind different instructor intervention strategies include the 
+instructors' pedagogical philosophy, a desire to encourage learner 
+interaction, a desire to ensure students understand course content, and a 
+need to correct misconceptions \cite{phirangee_fill_2016}. 
+The intervention strategy chosen was found to impact student learning 
+significantly \cite{mazzolini2003,mazzolini2007}.
+
+\begin{figure}
+\small 
+\begin{tabular}{|p{7.8cm}|}
+\hline 
+
+\textbf{Student 1 (original poster)}: Hie guys I m sorry
+\textbf{if}$_{Cont}$ my question is naive in
+anyway. \textbf{But}$_{Comp}$ I am confused ...  Say suppose,
+\textbf{if}$_{Cont}$ we were to take the 5-6 Descending
+progression...  \textbf{and so on}$_{Exp}$ I can’t help
+\textbf{but}$_{Comp}$ see the ...  \textbf{Now}$_{Temp}$ {\bf
+if}$_{Cont}$ I need to apply the same progression to a minor
+scale, \textbf{then}$_{Cont}$ should I ... In the case of circle
+of fifths progression, \textbf{if}$_{Cont}$
+I... \textbf{So}$_{Cont}$ we apply VII major instead?... \\
+
+\hline \\
+
+\textbf{Student 2 (1st reply)}: In a minor key the chords ... are
+\textbf{as follows}$_{Exp}$..., \textbf{but}$_{Cont}$ we ...,
+\textbf{because}$_{Cont}$ dominant chords should be... The
+wrinkle in minor keys is that to create the V chord, you have to
+raise the seventh degree of the scale (\textbf{so}$_{Cont}$ in a
+minor you sharp the g, \textbf{when$_{Temp}$} it occurs in the V
+chord). I am not sure, \textbf{but}$_{Exp}$ I think ... I believe
+you can use that chord as an substitute for the V chord in a
+minor key, \textbf{just as}$_{Comp}$ you can in the major key,
+\textbf{but}$_{Exp}$ I'd depend on the staff to confirm
+that. ...Take this with a grain of salt, \textbf{as}$_{Cont}$ I
+am learning, too, \textbf{but}$_{Exp}$ I think it is correct. \\
+
+\hline \\
+
+\textbf{Instructor's reply}: Hi [Student1] [Student2] is heading towards 
+the right direction. He is right about the circle of fifths ...  \\
+
+\hline
+\end{tabular}
+% Min: fixed notation to be easier to interpret.
+% BUG - Still doesn't really telegraph what we want to show -- 
+% That OBVIOUS DISCOURSE CUE PATTERNS or INVENTORIES should signal intervention.
+\caption{An example from our {\sc Classical-1} MOOC in our corpus
+  where student confusion could benefit from instructor intervention.
+  Here, discourse connectives are in bold and annotated with their
+  Level-1 PDTB senses: (Temp)oral, (Cont)ingency, (Comp)arison, or
+  (Exp)ansion.}
+\vspace{-4mm}
+\label{fig:example-intro}
+\end{figure}
+%% \begin{figure}
+%% \begin{fminipage}{0.47\textwidth}
+%% \small
+%% \textbf{Student 1 (original poster)}: Hie guys I m sorry
+%% \textbf{if}$_{Cont}$ my question is naive in
+%% anyway. \textbf{But}$_{Comp}$ I am confused ...  Say suppose,
+%% \textbf{if}$_{Cont}$ we were to take the 5-6 Descending
+%% progression...  \textbf{and so on}$_{Exp}$ I can’t help
+%% \textbf{but}$_{Comp}$ see the ...  \textbf{Now}$_{Temp}$ {\bf
+%% if}$_{Cont}$ I need to apply the same progression to a minor
+%% scale, \textbf{then}$_{Cont}$ should I ... In the case of circle
+%% of fifths progression, \textbf{if}$_{Cont}$
+%% I... \textbf{So}$_{Cont}$ we apply VII major instead?...
+%% \end{fminipage}
+%% \begin{fminipage}{0.47\textwidth}
+%% \small
+%% \textbf{Student 2 (1st reply)}: In a minor key the chords ... are
+%% \textbf{as follows}$_{Exp}$..., \textbf{but}$_{Cont}$ we ...,
+%% \textbf{because}$_{Cont}$ dominant chords should be... The
+%% wrinkle in minor keys is that to create the V chord, you have to
+%% raise the seventh degree of the scale (\textbf{so}$_{Cont}$ in a
+%% minor you sharp the g, \textbf{when$_{Temp}$} it occurs in the V
+%% chord). I am not sure, \textbf{but}$_{Exp}$ I think ... I believe
+%% you can use that chord as an substitute for the V chord in a
+%% minor key, \textbf{just as}$_{Comp}$ you can in the major key,
+%% \textbf{but}$_{Exp}$ I'd depend on the staff to confirm
+%% that. ...Take this with a grain of salt, \textbf{as}$_{Cont}$ I
+%% am learning, too, \textbf{but}$_{Exp}$ I think it is correct.
+%% \end{fminipage}
+%% \begin{fminipage}{0.47\textwidth}
+%% \small
+%% \textbf{Instructor reply}: Hi [Student1] [Student2] is heading towards 
+%% the right direction. He is right about the circle of fifths ... 
+%% \end{fminipage}
+%% \caption{An example from {\sc Classical-1} MOOC in our corpus where student 
+%% confusions could benefit from instructor intervention.  Here, discourse 
+%% connectives are in bold and annotated with their Level-1 PDTB senses: (Temp)oral,  
+%% (Cont)ingency, (Comp)arison, or (Exp)ansion.}
+%% \vspace{-0.5cm}
+%% \label{fig:example-intro}
+%% \end{figure}
+
+Earlier work also shows that content-based features, which
+include simple linguistic features derived from student vocabulary 
+(e.g., word unigrams), 
+signal common traits that are useful for predicting instructor 
+interventions~\cite{chandrasekaran2015learning,chaturvedi2014predicting}. 
+However, a key problem with surface-level vocabulary features is that they 
+vary widely across courses, as courses from different subject areas use 
+different domain-specific vocabulary. Predictive models trained on such 
+word-based 
+features do not generalize well when applied to new unseen courses in different 
+disciplines. In contrast, function words such as conjunctions (e.g., ``and'', 
+``because'') occur frequently across corpora and can be leveraged to 
+create more robust features, 
+such as what was done in the related task of predicting transactivity in 
+educational dialogues \cite{joshi2007}.
+% (\citeyear{joshi2007}).
+%function words to improve performance of a dialogue act (more specifically, 
+%binary transact) prediction.
+% Muthu(cam ready)- somehow the foll. sentence has been modified drastically 
+% is now wrong. function words are NOT transacts. Transacts can be considered as dialogue acts.
+%function words (%more specifically
+%i.e., transacts).
+%educational setting.
+%CADE - I think we need to define transactivity at least parenthetically
+%Muthu - I am going to wait till we complete the paper and add this concisely based on the space we have
+%Min - tried to fix.  What do you think?
+%Muthu - their paper was on binary class prediction, not types of transacts. so this seems inaccurate.
+
+%For example, arguments and narrations differ in the occurrence of connective. 
+%CADE - I think we can cut the above example to save space. At a minimum, it shouldn't be framed as an example because it's a claim that isn't clearly an example of communicative intent
+
+% Min: can we refer to the figure here?  I edited to anyways.  Please undo if not appropriate.
+%CADE - I don't think Figure 1 supports the argument found in the sentence (that of differences based on text type. I moved it to the beginning of the next paragraph.
+%types, as seen in .  
+% Min: I don't understand this point below.  Can we just drop?
+%% Further, we observe that student posts on MOOC forums
+%% consist of well-formed sentences with better syntax quality than those found 
+%% in a typical web forum. Consider the student discussion in 
+%% Figure~\ref{fig:example-intro} from one of the MOOCs in our corpus.
+%Muthu: I want to say somewhere that the quality of English in MOOC forums are better than web forums. So proper use of discourse connectives in sentences are commonly found.
+
+% Min: we need something like this here.  Can you do it?
+% In the above example we see the patterns XXX YYY.  Such patterns clearly indicate confusion and opportunity for intervention and can be distinguished from other examples YYY ZZZ where similar content words do not telegraph such signals.
+%Muthu: done.
+Our work focuses on a specific subclass of 
+function words --- discourse connectives --- as they serve to 
+connect clauses and signal the communicative intent of the writer. 
+The Penn Discourse Treebank (PDTB; \citeauthor{Prasad2008} 
+\citeyear{Prasad2008}) formalism identifies connectives 
+that signal discourse relations and categorises them into senses. 
+As can be seen in Figure~\ref{fig:example-intro}, both student posts 
+contain a number of \textit{if...then}, \textit{but} connectives that 
+belong to the contingency and comparison senses of the PDTB. It is 
+common to find such patterns in student posts 
+expressing confusion as they hedge and hypothesise to check their understanding,
+which can call for instructor intervention. In contrast, the student post in 
+Figure~\ref{fig:example-danger} is confident in tone, uses the imperative form, 
+and is devoid of such connectives. These examples motivate us further to extract 
+discourse-based features from student discussion forum posts. We hypothesize 
+that student posts differ in their discourse structures and that some of these 
+structures will attract instructor intervention. We additionally hypothesize 
+discourse features will yield models for predicting instructor intervention that 
+generalize well to unseen courses. 
+
+Following prior work, we cast the problem of predicting instructor intervention
+as a binary classification problem where intervened and non-intervened threads 
+are treated as positive and negative instances, respectively.
+We test our hypotheses extrinsically using automatically extracted discourse 
+features that follow the PDTB 
+% MinCR: move to front first mention
+% (\citeauthor{Prasad2008} \citeyear{Prasad2008})
+formalism, enriching a state-of-the-art baseline model for predicting
+instructor intervention. In contrast to prior work on single MOOC
+instances, our experiments are comprehensive, covering a corpus of 14
+MOOC instances from various disciplines, offered by two different
+universities.
+% Min: this doesn't go here.
+% We chose PDTB due to the availability of 
+% annotated corpora using its tag-set and discourse parsers trained on such 
+% corpora.  
+
+Our results show that PDTB features improve the state-of-the-art baseline 
+performance by 3.4\% (Table~\ref{tab:resultOut}) when trained on a large 
+out-of-domain dataset and by 0.4\% (Table~\ref{tab:resultIn}) when trained on a  
+smaller in-domain dataset. Further, PDTB features on 
+their own perform comparably to the state-of-the-art on select MOOC offerings. 
+We show that unlike vocabulary based features, PDTB features are robust to 
+domain differences across MOOCs.
+% Min: BUG 
+%DJL Add sentence
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Related Work} 
+\label{sect:related}
+
+Predicting instructor intervention became a viable problem to
+study with the availability of large amounts of educational discussion 
+forum data from MOOCs. Chaturvedi et~al.~\shortcite{chaturvedi2014predicting} 
+first specified the problem as predicting which MOOC discussion forum threads 
+instructors would post to, where an instructor post is considered 
+an intervention.
+
+They modelled macro-level thread discourse structure (i.e.,
+across posts), demonstrating that their model outperformed a
+representative classifier endowed with many lexical and other
+surface level features. However, later work failed to replicate their 
+results across a much broader study of MOOC forums culled from several 
+universities~\cite{chandrasekaran2015learning}. This work cited the 
+large variety of course content and instructor preference as likely 
+causes to the non-portability of the initial study's results. 
+\citeauthor{chandrasekaran2015learning} also showed that other simple 
+features such as sub-forum type, thread length and surface level 
+linguistic cues outperform the discourse model from the earlier work.
+
+Our work uses \citeauthor{chandrasekaran2015learning}
+\shortcite{chandrasekaran2015learning}, hereafter denoted as EDM'15,
+as a starting point and as a state-of-the-art baseline for comparison.
+In contrast to both prior works, we model microscopic discourse
+structures -- {\it i.e.}, sentence and clause-level discourse within
+student posts. We also eschew vocabulary-dependent approaches, such as
+those suggested by \citeauthor{ramesh2015} \shortcite{ramesh2015}
+where intervention was based on emergent topics and
+% Min: what's an aspect?
+% Muthu: `aspect' as in product review summarisation literature. Can't we assume the reviewer to be familiar with this concept? I think it is well-known
+% MinCR: probably not, rephrasing
+%% aspect
+subtopics 
+from each course, since we seek models that generalize across a wide
+variety of courses.
+
+\textbf{Discourse Parsing Applications.} As forum discussions feature
+dialogue and argumentation, we felt strongly that providing discourse
+analyses would improve prediction performance. Automatic discourse
+parsing discovers the relationship between clauses or sentences in
+contiguous text. Discourse parsing usually categorizes the inferred 
+relation with a discourse type.
+
+% Although known to be far from perfect, recent work in natural language         
+% processing has generated a number of automatic discourse parsing               
+% packages that have been successfully applied to downstream  
+%applications.                                                                                                                         
+With the availability of large-scale discourse annotations on top of
+the Penn Treebank, the PDTB formalism for
+discourse annotation has become a {\it de facto} standard for
+automated discourse parsing and analyses. Importantly, the PDTB
+formalism splits the detection of discourse relations into ones
+signaled {\it explicitly} by a discourse connective (e.g., the
+% Min: BUG: Update example to follow Fig 1 if Fig 1 changes.  
+connective ``if'' often signals a {\it Contingency} relation between
+its arguments, as in the first connective from
+Figure~\ref{fig:example-intro}) from {\it implicitly} signaled ones
+that have no overt connective. As a result, automatic discourse
+relation identification relying solely on explicit connectives is
+rather precise but provides low overall coverage.
+
+While the PDTB annotated corpus is built largely on newswire (e.g.,
+{\it Wall Street Journal}), the PDTB tag set and derived parsers have
+found applicability in a variety of NLP tasks on different corpora: Li
+et~al.~\shortcite{li2014} showed the influence of PDTB explicit
+relations on machine translation quality.  Mih{\u{a}}il{\u{a}} and
+Ananiadou~\shortcite{mihuailua2014} found causal relations using PDTB
+in scientific Biomedical journals.  Importantly, PDTB's applicability
+to the related form of user-generated text, especially expository
+texts, has also been studied: Faulkner
+et~al.~\shortcite{faulkner2014automated} used PDTB discourse features
+to support argument classification in student essays from the
+International Corpus of Learner
+English\footnote{\url{https://www.uclouvain.be/en-cecl-icle.html}}.
+Also similarly, in performing a selection problem close to ours, Wang
+et~al.~\shortcite{Wang2012} studied discourse parsing's utility for
+retweetability of tweets and found correlations between the discourse
+type and sentiment polarity.  \citeauthor{swanson2015}
+(\citeyear{swanson2015}) also found these relations to be useful in
+argument extraction from general web forum text.
+
+MOOC discussion forum text is user-generated, expository and
+conversational all at once. For this reason, we hypothesize that
+(explicitly marked) discourse parsing would improve the prediction of
+instructor intervention. Our hypothesis extends to forums in any
+online learning environment, such as the learning management systems
+that schools and universities host for their students.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Data and Preprocessing}
+\label{sect:data}
+
+The corpus for our experiments consists of data from 14 Coursera MOOC
+offerings\footnote{As of September 2016, Coursera, a commercial MOOC
+  platform: \url{https://www.coursera.org}, hosted 1157 courses in
+  English spanning the humanities, social sciences, engineering, and
+  sciences.} that are spread across 7 courses from the authors'
+universities. The included MOOCs taught a variety of subjects spanning
+the humanities and sciences. All courses relied on videos to deliver
+core content. Different instructional approaches and learning
+activities (e.g., peer/self-assessments, prompted discussions, tests,
+or papers) were used and influenced discussion forum activities. This
+variety is apparent through the number of instructional staff (i.e.,
+instructor or teaching assistants) who posted in the forums.  The
+varied approaches are also apparent through their intervention ratios
+where {\sc Clinical-1}\footnote{``-$n$'' refers to the $n^{th}$ time
+  the course was offered; ``{\sc Clinical-1}'' stands for the first
+  offering of the Clinical course.} (Row~6; Table~\ref{tab:data}) had
+the highest intervention ratio (0.73) and {\sc Disaster-3} (Row~10 of
+Table~\ref{tab:data}) had the lowest (0.02).
+
+% - Clinical terminology had regular prompts in the content and instructor announcements/emails. It is the only course that did this explicitly.
+
+% - Disaster Prep used prompts (I think through the videos) to get students to share information about their areas as an informal homework.
+% disasterprep 10012-10019
+% - nutrition had a self-assessment homework in the forums
+% on closer inspection it looks like most of the homework forums in NUTRITION had prompts (10004-10013)
+%% find that mot interventions were from Errata.
+
+% - nuclear science appears to have 1 forum with a title that may serve to prompt discussion  (10004)
+% - accountable talk used thread titles to prompt discussion. I don't know if students were otherwise directed to the forums
+
+Coursera forums are divided into several sub-forums. Each of the sub-forums was 
+manually categorized, using the definitions  
+from~\cite{chandrasekaran2015learning}, as belonging to one of the following 
+types: errata, exam, lecture, homework, general, peer review, study group, or 
+technical issues. Similar to prior work on intervention prediction, the general, 
+study group, peer review  and technical issues sub-forums and their threads were 
+removed since they are noisy and do not focus on course content (e.g., social discussions and reports of 
+technical issues). As the task is instructor intervention prediction, we also omit threads where the first post was made by an 
+instructor. Table~\ref{tab:data} shows the number of threads that 
+are used in our model.
+
+% Min: this also doesn't make sense.  I thought we do the first intervention prediction because it's a clean task.
+% Muthu: Rephrased. Yes and predicting subsequent intervention is a different task. Removal of posts is also important to not cheat of added feature counts that can easily signal a prior intervention. 
+We truncate threads after the first instructor post (dropping
+subsequent student posts) % after the intervention ) 
+because predicting
+the first instructor intervention is a viable problem and distinct
+from predicting subsequent, follow-up interventions that can be
+motivated by different reasons.  Further, after an intervention,
+discussions gain visibility which can
+%incorrectly 
+inflate feature counts in our prediction task. To extract features, we
+first tokenize thread text.  We replaced instances of non-lexical
+references such as equations, URLs and timestamps, with the tokens:
+$<$EQU$>$, $<$URL$>$, $<$TIMEREF$>$, respectively. These tokens are a
+feature of the baseline prediction system (see ``Baseline (EDM'15)''
+section). They also enable the discourse parser to skip unparsable
+text\footnote{The discourse parser extracts syntactic and dependency
+  parse features from the Stanford parser, which fails on these types
+  of non-lexical strings; available at
+  \url{http://nlp.stanford.edu/software}.}. Stopwords and words of
+length less than 3 were removed before extracting the baseline
+features. Stopwords were not removed when extracting discourse
+features ({\it cf} ``Discourse Feature Extraction'' Section).
+Our work examines three predictive models: 1) the baseline (EDM'15),
+2) a system with only PDTB discourse relations as features (PDTB), and
+3) an augmented system where discourse relations are also used (EDM'15
++ PDTB; E+P for short).
+
+\begin{table}
+\centering
+\def\arraystretch{1.2}% 
+\small
+\begin{tabular}{|l|l|r|r|r|}
+\hline 
+\bf Uni. & \bf Course & \bf \# of  & \bf  \# of non--  & \bf I. Ratio \\ 
+\bf &\bf (-Iteration) & \bf 	intervened	 & \bf intervened & \bf \\ 
+\hline
+NUS & {\sc Classic-1} & 164 & 527 & 0.31\\
+& {\sc Classic-2 } & 17 & 155 & 0.11\\
+& {\sc Reason-1 } & 58 & 231 & 0.25\\
+& {\sc Reason-2 } & 40 & 265 & 0.15\\
+\hline
+Pitt & {\sc AccTalk} & 98& 254& 0.39\\
+& {\sc Clinical-1} & 33& 45& 0.73\\
+& {\sc Clinical-2} & 32& 82& 0.39\\
+& {\sc Disaster-1} & 81& 2332& 0.03\\
+& {\sc Disaster-2} & 53& 718& 0.07\\
+& {\sc Disaster-3} & 18& 960& 0.02\\
+& {\sc Nuclear-1} & 272& 779& 0.35\\
+& {\sc Nuclear-2} & 93&255& 0.36\\
+& {\sc Nutrition-1} & 98& 2346& 0.04\\
+& {\sc Nutrition-2} & 73& 1475& 0.04\\
+\hline
+ & Total & 1,130& 10,424& \\
+% & Avg. & & & 0.25\\
+\hline
+\end{tabular}
+\caption{\label{tab:data} Thread counts over the four main sub-forums  (errata, 
+exam, lecture and homework) of each course iteration, with their intervention 
+ratio (I. Ratio), defined as the ratio of \# of intervened to non-intervened 
+threads.}
+\end{table} 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Baseline (EDM'15)}
+\label{sect:baseline}
+The baseline system uses a maximum entropy classifier with the
+following set of features: unigrams, thread forum type, student
+affirmations to a previous post, thread properties (\# of posts,
+comments, and posts+comments), average \# of comments per post, \# of
+sentences in the thread, \# of URLs, and \# of timestamped references
+to parts of a lecture video. The authors noted the imbalanced nature
+of their datasets, with non-intervened threads greatly outnumbering
+intervened ones. This motivated the use of class weights to
+counterbalance the \# of non-intervened instances. Class weights, an
+important parameter of this model, were estimated as the ratio of
+negative to positive samples in the training instances.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Discourse Feature Extraction}
+\label{sect:feature}
+%CADE - we should have a reference for the PDTB extraction procedure
+%Muthu - okay, we could use one of the papers from the discourse parser 
+%related work section. 
+%CADE - Which is the one where the system is introduced/described?
+%Muthu - Lin et al, 2014 is the discourse parser we use. We already cite 
+%in the para after
+%CADE - I think we need the cite with the F1. I also feel like we need 
+%it up here where we are defining the parser and explaining its process. 
+%I am happy to let this go if others don't think it's necessary.
+%@Min, @Diane - what are your thoughts on this?
+
+We experimented with a prediction system based solely on
+automatically-acquired discourse features from the PDTB-based discourse
+parser from \cite{Lin2014}.
+We employ this shallow discourse parser on the input to categorize identified discourse connectives
+according to the PDTB tag set, and subsequently extract them for our use.
+The parser first distinguishes discourse connectives (e.g., ``and'' can signal 
+a discourse relation of `Expansion', but can also act as a coordinating conjunction). It then 
+classifies them into one of several senses as specified by PDTB. PDTB 
+categorizes the connectives into implicit and explicit connectives, each of 
+which is assigned a sense. Senses are organized hierarchically, where the top 
+Level--1 senses discriminate among 4 relations: `Contingency', `Expansion', `Comparison' and `Temporal'. We only used explicit connectives and Level--1 
+senses as features. This is because \cite{Lin2014} report a low $F_1$ of 
+39.6\% for extracting implicit connectives while that of explicit 
+connectives is much better (86.7\%). Limiting to Level--1 senses also 
+avoids sparsity issues. We found the distribution of the 4 Level--1 senses
+as tagged by the discourse parser 
+in our MOOC corpus was similar to that of the original PDTB annotated 
+corpus built from 
+%a part of the Wall Street Journal (WSJ) corpus
+newswire (see Table~\ref{tab:corpCompare}), supporting our decision to
+use Level--1 senses. 
+% MinCR: below sentence really needed?
+%% The similarity in sense distribution might
+%% partially be due to the face that the discourse parser was originally
+%% trained on the original PDTB corpus.
+
+\begin{table}
+\centering
+\def\arraystretch{1.2}% 
+\begin{tabular}{|l|r|r|r|r|}
+\hline
+\bf Corpus&  Exp.& Cont.& Comp. & Temp.\\
+\hline
+\small
+\bf 14 MOOC corpus& 33\%&  28\%& 20\%& 19\%\\
+\bf PDTB corpus&  34\%&  19\%& 29\%& 19\%\\
+\hline
+\end{tabular}
+\caption{Distribution of PDTB level-1 senses for explicit connectives (top 
+row) as tagged by the discourse parser, which are similar 
+to those reported for the PDTB corpus \cite{Prasad2008}, bottom row.}
+\label{tab:corpCompare}
+\end{table}
+
+%% MinCR: promoting to body sentence.
+% We used the PDTB discourse parser described in \cite{Lin2014}\footnote{We used 
+% the Java version of the parser available at 
+% \url{https://github.com/WING-NUS/pdtb-parser}}. The parser's models 
+We used  the Java version of the parser\footnote{Available at 
+\url{https://github.com/WING-NUS/pdtb-parser}}, which comes pre-trained
+with Sections~2--21 of the PDTB annotated corpus, using 
+the {Level--1} relation senses. 
+We note that although the discourse parser's performance on MOOC forum
+text had not been previously evaluated, we decided to use the
+pre-trained parser given that such PDTB discourse parsers have been
+used to support a variety of downstream tasks using different corpora,
+without retraining ({\it cf} Related Work). Additionally, re-training
+is a resource intensive task, and we judged it to be a lower priority
+to evaluate it specifically for MOOC data.
+
+Each forum thread is treated as a document, where each post in the thread 
+is treated as a paragraph. Since the parser identifies discourse relations 
+within paragraphs of text, only within-post discourse relations 
+were identified; this is appropriate as the parser was trained on
+single-party narrative (newswire) rather than multiparty dialogue.  
+We derive 25 features from the PDTB relation senses output by the parser. 
+These constitute the discourse features identified as PDTB in 
+Tables~\ref{tab:resultIn}, \ref{tab:resultOut} and \ref{tab:pdtb-robust}:
+
+\begin{itemize}
+\item Total number of all relation senses (1 feature): The sum of the 
+frequencies (number of occurrences) of all four Level--1 senses;
+\item Proportion of each sense (8 features): The absolute and relative 
+frequency of each sense in a thread. Absolute frequency 
+is normalized by thread length;
+\item Proportion of sense sequences of length 2 (16 features): Normalized 
+number of occurrences of each sense sequence of length 2 
+(e.g., `Expansion'-`Contingency') in a thread divided by the total 
+number of occurrences of all sense sequences of length 2.
+\end{itemize}
+
+\noindent We use the maximum entropy classifier with class weights 
+as in the EDM '15 baseline for both PDTB and E+P systems. The implementations 
+of the EDM '15 and the discourse based systems are 
+publicly available\footnote{\url{https://github.com/WING-NUS/lib4moocdata}}.
+%\subsection{Agreement and Disagreement features}
+%\label{subsect:AgDisagfeature}
+%We also hypothesise special discourse relations such as (dis)agreement to exist between 
+%successive posts and between first / original post in the thread and subsequent posts in 
+%the thread. We count occurrence frequency of  words that signal agreement and 
+%disagreement. \textit{yes, no, agree, disagree, agreed, disagreed, correct, incorrect, 
+%right, wrong, mistaken} in the first line of each post in the thread. We don't include 
+%further context such as neighbouring words to avoid feature sparsity. We derive two 
+%features from these counts: the total occurrence frequency of all words listed above and 
+%their total divided by the number of words in the thread. These features are 
+%denoted as AgDisag in Table~\ref{tab:results}.
+
+% {\bf Min: BUG you never mention the model you are using (MaxEnt, SVM, etc.).  Do class weights also figure in this?}
+%{\bf Min: BUG you never mention the model you are using (MaxEnt, SVM, etc.).  %Do class weights also figure in this?}
+% Muthu: The Baseline mentions the model and we say we only augment the baseline 
+% with PDTB features. So its implied that we use the same right? Yes, we still use
+% class weights.
+
+% Min: BUG need to fix terminology and introduce at the appropriate outset:
+% iteration, offering.
+% Min: we actually have 14 offerings not 14 courses (cf "14 MOOC courses", should then be "7 MOOC courses"
+%Muthu: in the Data & preprocessing section we do say, 
+%14 MOOC offerings from 7 MOOCs 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Evaluation}
+\label{sect:result}
+We evaluate the models under two evaluation schemes: an 
+(i) in-domain scheme, and 
+an (ii) out-of-domain scheme. We report the performance 
+of the models in terms of precision (P), recall (R) and 
+$F_1$ of the positive class.
+
+The \textbf{in-domain setting} models were trained and evaluated separately on 
+each MOOC using stratified five-fold cross validation. Stratification accounts 
+for the highly imbalanced data and ensures that each fold had both positive and
+negative samples.
+% The results for individual courses are not shown for the 
+% PDTB model because it did not outperform (weighted average $F_1=11.8$) the 
+% EDM model (Table~\ref{tab:resultIn}) on average. 
+We see that the combined model E+P outperforms the baseline EDM'15 
+(Table~\ref{tab:resultIn}), on average. 
+
+% In addition to showing the weighted averages for the performance of the EDM'15
+%and EDM'15 + PDTB models, Table~\ref{tab:resultIn} shows how the EDM'15 and the 
+% EDM'15 + PDTB performed for each MOOC offering. 
+Drilling down, we see that while EDM'15 does well on the first 
+offering 
+% (indicated by appending a 1 to the course name)
+of many courses (those with the ``-1'' suffix)
+which have higher intervention ratios, E+P outperforms EDM'15 on subsequent 
+offerings which typically have lower intervention ratios.
+%  than the initial offering.
+%Old version
+%We also observe that {\sc classic-1} and {\sc disaster-1} have 0 $F_1$ 
+%scores. 
+We also observe the $F_1$ scores for {\sc Classic-2} and {\sc Disaster-3} are 0.
+Despite stratification, the \# of intervened threads per fold was 
+too low for both courses ($\sim$3 to 4 per fold) due to their low intervention 
+ratios (see Table \ref{tab:data}). As a result, both models are unable to 
+predict any intervention for either course.
+% Min: BUG -- ok.  So what?  Need something after that.
+% E.g., this is good because in cases of subsequent offerings, we have sparser 
+%intervention that may not be as overtly signaled as in the initial offering, and 
+%discourse connectives often help with that... blah blah 
+%Agreement and Disagreement features (AgDisag) with the baselines improves over 
+%baseline (row 7 for Table~\ref{tab:results}) for the classic corpus while not 
+%being useful in the reason corpus. The AgDisag in the reason corpus were 
+%sparser and difficult to capture using simple word count features.
+%PDTB& 7.4& 29.5& 11.8& 10.1 & 23.0& 14.0\\
+\begin{table}
+\centering
+\def\arraystretch{1.15}% 
+\small
+\begin{tabular}{|l|r|r|r||r|r|r|}
+\hline 
+&
+\multicolumn{3}{c||}{EDM'15} & 
+\multicolumn{3}{c|}{EDM'15 + PDTB}
+\\
+\hline
+\bf Course&  P&  R& $F_1$& P&  R& $F_1$\\
+\hline
+{\sc Classic-1}& 25.0& 33.1& \textbf{28.5$^{**}$}& 22.7& 33.2& 27.0\\
+\hline
+{\sc Classic-2}& 0.0& 0.0& 0.0& 0.0& 0.0& 0.0\\
+\hline
+{\sc Reason-1}& 32.2& 48.2& \textbf{38.6}& 25.6& 41.8& 31.8\\
+\hline
+{\sc Reason-2}& 20.4& 47.5& 28.5& 27.3& 51.0& \textbf{35.5}\\
+\hline
+\hline
+{\sc AccTalk}& 59.3& 44.7& \textbf{51.0}$^*$& 40.3& 50.7& 44.9\\
+\hline
+{\sc Clinical-1}& 49.7& 34.7& \textbf{40.8}& 51.0& 27.3& 35.6\\
+\hline
+{\sc Clinical-2}& 44.2& 61.3& 51.4& 49.0& 62.3& \textbf{54.9}\\
+\hline
+{\sc Disaster-1}& 14.7& 6.7& 9.2& 16.0& 9.4& \textbf{11.8$^{**}$}\\
+\hline
+{\sc Disaster-2}& 6.7& 5.0& \textbf{5.7}& 6.7& 3.3& 4.4\\
+\hline
+{\sc Disaster-3}& 0.0& 0.0& 0.0& 0.0& 0.0& 0.0\\
+\hline
+{\sc Nuclear-1}& 15.5& 16.8& \textbf{16.1}& 14.3& 12.9& 13.6\\
+\hline
+{\sc Nuclear-2}& 11.8& 19.4& 14.7& 20.0& 37.2& \textbf{26.0$^{**}$}\\
+\hline
+{\sc Nutrit-1}& 85.5& 57.8& \textbf{69.0$^{**}$}& 75.8& 58.2& 65.9\\
+\hline
+{\sc Nutrit-2}& 60.1& 9.5& 47.7& 61.3& 47.9& \textbf{53.8$^*$}\\
+\hline
+\hline
+\textbf{Macro avg.}& 30.4& 29.6& 30.0& 29.3& \textbf{31.1}& \textbf{30.2}\\
+\hline
+\textbf{Weighted} & 37.3& 28.1& 32.0& 35.1& \textbf{30.0}& \textbf{32.4}\\
+\textbf{macro avg.}& & & & & &\\
+\hline
+\end{tabular}
+\caption{Model performance of EDM'15, with and without PDTB,
+per MOOC, where each MOOC is evaluated individually 
+(in-domain setting) using 5-fold stratified cross validation. 
+Best performance is bolded; significance indicated where applicable 
+($^* p < 0.05$; $^{**}p < 0.01$).}
+\label{tab:resultIn}
+\end{table}
+In the \textbf{out-of-domain setting}, we use leave-one-out 
+cross-course-validation (LOO-CCV) where models trained 
+% Min: watch out for attacks that you use a previous offering in part to train another offering of the same course.
+on 13 courses are tested on the 14\textsuperscript{th} unseen course. 
+This evaluation setting more closely approximates the real world 
+where universities hosting MOOCs have data from previously offered MOOCs and 
+would want to train predictive models that could be deployed in upcoming 
+courses. This evaluation shows which models are more robust when adapting 
+to unseen out-of-domain data. Table~\ref{tab:resultOut} shows the 
+performance of the EDM'15 and E+P models on each of the 14 MOOCs 
+from LOO--CCV.
+
+E+P betters EDM'15 performance by 3.4\% on average. The improved $F_1$ 
+is largely due to a 5.7\% improvement in recall. We argue that, for the problem 
+of intervention prediction, improving recall is more important than precision 
+since missing an intervention is costlier than intervening on a less 
+important thread. Here the performance outlier is the {\sc Clinical-1} MOOC, 
+where EDM'15 performs significantly better than E+P, which may be partially 
+attributed to the course having the smallest test set.
+
+Further, Tables~\ref{tab:resultIn} and \ref{tab:resultOut} show that 
+the E+P and EDM'15 models both benefit from access to more data in 
+the out-of-domain setting. The EDM'15 model only improved by 2.7\%, 
+whereas the E+P model improved by 5.7\%, showing the benefits 
+of using domain-independent linguistic features to predict instructor 
+intervention.
+\begin{table}
+\centering
+\def\arraystretch{1.15}% 
+\small
+\begin{tabular}{|l|r|r|r||r|r|r|}
+\hline 
+&
+\multicolumn{3}{c||}{EDM'15} & 
+\multicolumn{3}{c|}{EDM'15 + PDTB}
+\\
+\hline
+\bf Course&  P&  R& $F_1$& P&  R& $F_1$\\
+\hline
+{\sc Classic-1} & 26.7& 3.1& 5.6& 23.6& 29.5& \textbf{26.2}$^{**}$\\
+\hline
+{\sc Classic-2} & 18.5& 31.3& 23.3& 18.2& 37.5& \textbf{24.5}\\
+\hline
+{\sc Reason-1} & 40.0& 12.3& 18.8& 50.0& 16.3& \textbf{24.6}\\
+\hline
+{\sc Reason-2} & 52.9& 29.0& 37.5& 35.6& 51.6& \textbf{42.1}$^{**}$\\
+\hline
+\hline
+{\sc AccTalk} & 41.0& 26.7& 32.3& 50.0& 26.7& \textbf{34.8}\\
+\hline
+{\sc Clinical-1} & 81.8& 30.0& \textbf{43.9}$^*$& 71.4& 16.7& 27.0\\
+\hline
+{\sc Clinical-2} & 55.9& 76.0& 64.4& 59.2& 76.0& \textbf{66.7}\\
+\hline
+{\sc Disaster-1} & 25.6& 14.5& 18.5& 21.8& 25.0& \textbf{23.3}$^{**}$\\
+\hline
+{\sc Disaster-2} & 20.0& 4.8& \textbf{7.8}& 18.8& 4.8& 7.7 \\
+\hline
+{\sc Disaster-3} & 9.5& 11.1& 10.3& 8.6& 16.7& \textbf{11.3}$^{**}$\\
+\hline
+{\sc Nuclear-1} & 55.6& 4.8& 8.8& 66.7& 5.7& \textbf{10.6}\\
+\hline
+{\sc Nuclear-2} & 33.3& 15.6& \textbf{21.2}& 31.8& 15.6& 20.9\\
+\hline
+{\sc Nutrit-1} & 77.3& 62.4& \textbf{69.1}& 72.0& 63.4& 67.4\\
+\hline
+{\sc Nutrit-2} & 46.5& 52.4& 49.3& 54.2& 50.8& \textbf{52.5}$^*$\\
+\hline
+\hline
+\textbf{Macro avg.}& 41.8& 26.7& 32.6& 41.6& \textbf{31.2}& \textbf{35.6}\\
+\hline
+\textbf{Weighted} & 42.7& 29.3& 34.7& 41.9& \textbf{35.0}& \textbf{38.1}\\
+\textbf{macro avg.}& & & & & &\\
+%\textbf{Weighted} & 44.4& 32.0& 37.2& 43.9& 35.5& \textbf{39.3}\\
+%\textbf{macro avg.}& & & & & &\\
+\hline
+%% Min: BUG looks wrong.  You have no significance for Nutrition 2 which has a similar (6 pts) improvement to AccTalk, but a larger thread count.  Are you sure?
+%% Muthu: ACCTalk is insignificant while nutrition 2 is significant. Since nutrition 2 is much larger course a small diff appears significant.
+% Sig calculations in this table are still pending for some NUS courses.
+% MinCR: is this issue fixed?
+\end{tabular}
+\caption{Prediction performance of EDM'15 and E+P systems in each of
+  the 14 MOOCs where each one is evaluated (out-of-domain setting)
+  using leave-one-out cross-course-validation (LOO--CCV). Best
+  performance is bolded; significance indicated where applicable
+  ($^* p < 0.05$; $^{**}p < 0.001$).}
+\label{tab:resultOut}
+\end{table}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Discussion}
+\label{sect:discuss}
+
+To understand the observed performance of the PDTB-based features, we
+probe further, answering two research questions that are natural
+extensions of the results.\\
+
+\noindent \textbf{RQ1.} {\it Are the PDTB features useful supplemental evidence, 
+especially when simple features do not perform well?}
+
+In each of the 5 courses where E+P performs better than EDM'15, the course 
+iterations have smaller intervention ratios (see Tables~\ref{tab:data} and 
+\ref{tab:resultIn}). For example, E+P betters EDM'15 on {\sc Clinical-2}, {\sc 
+Reason-2} and {\sc Disaster-1} while EDM'15 has a better score on {\sc Clinical-1}, 
+{\sc Reason-1} and {\sc Disaster-2}.
+That is, PDTB features boost EDM'15 performance when there 
+are fewer positive instances to learn from. This could be due to EDM'15's 
+much larger feature space that requires more data to prevent sparsity. Note 
+EDM'15 excluded stopwords, a subset of which are PDTB connectives, meaning 
+that PDTB features contribute different information to the signal in the E+P 
+model.  Our analysis of the contributions of features showed `Contingency' and 
+`Expansion' relations to contribute the most. This may be due to their higher 
+prevalence relative to the other discourse relations in the corpus.
+%Muthu - okay, the last sentence now is misleading. PDTB connectives 
+% are a subset of stopwords. So one cannot argue that since EDM already has 
+% all the vocabulary as features PDTB features are derivative and redundant. 
+% so the foll is misleading.
+% "...and their inclusion within the PDTB connectives means that the 
+% PDTB feature is adding signals to the EDM+PDTB model"
+%CADE - ANY BETTER? Please feel free to adjust it. I'm not sure how to communicate what you are aiming for
+
+Consider the example in Figure~\ref{fig:example-pdtbEDM}. E+P classifies 
+this thread correctly while the EDM'15 model fails. This short thread does not 
+contain many content words. In contrast, the discourse connectives in these 
+student posts activate 16 of the 25 PDTB features.
+
+\begin{figure}[h]
+\small 
+\begin{tabular}{|p{7.8cm}|}
+\hline 
+
+\textbf{Student 1 (Original poster)}:
+Hi !!  I have a question about the 4th bar of the practice solution:
+the V chord has three roots. Is that normal \textbf{or}$_{Exp}$ just a mistake?
+Thank you. \\
+
+\hline \\
+
+\textbf{Student 2 (1st reply)}:
+[Student1's name], it is not a mistake. \textbf{While}$_{Comp}$ not
+as common \textbf{as}$_{Comp}$ merely doubling the root,
+\textbf{if necessary}$_{Cont}$, you can triple the root. \textbf{As}$_{Cont}$
+you see in this case, the root is tripled to smooth out the voice leading.
+\textbf{Otherwise}$_{Comp}$, the tenor would be on the E, \textbf{and}$_{Exp}$
+that would (probably) \textbf{result in}$_{Cont}$ parallel fifths moving to beat 4. \\
+
+\hline \\
+
+\textbf{Student 3}: Thanks [Student2's name] \textbf{but}$_{Comp}$, are you sure?
+I don't see it clear.... \\
+
+\hline \\
+
+\textbf{Instructor's reply}: Hi [Student3's name]. Please read these threads. 
+It has been discussed before. 
+Thanks. $<$URL$>$ ... \\
+
+\hline
+\end{tabular}
+\caption{Both PDTB %alone %b/c it's redundant and causes a line wrap
+and E+P capture this intervention, while EDM'15 fails to capture this 
+clarifying intervention.}
+% Min: BUG -- move interpretation into the text prose, or shorten in place.
+%%  thanks to the many discourse connectives
+%%   while EDM on its own fails. Vocabulary based signals on their own
+%%   are weak and hence fail on threads with fewer content words unless
+%%   they are supplemented by stronger signals. Discourse features are
+%%   strong even when few.
+\label{fig:example-pdtbEDM}
+\end{figure}
+%% \begin{figure}[t]
+%% \begin{fminipage}{0.47\textwidth}
+%% \small
+%% \textbf{Student 1 (Original poster)}:
+%% Hi !!  I have a question about the 4th bar of the practice solution:
+%% the V chord has three roots. Is that normal \textbf{or}$_{Exp}$ just a mistake?
+%% Thank you.
+%% \end{fminipage}
+
+%% \begin{fminipage}{0.47\textwidth}
+%% \small
+%% \textbf{Student 2 (1st reply)}:
+%% [Student1's name], it is not a mistake. \textbf{While}$_{BUG-MISSING}$ not
+%% \textbf{as common as}$_{BUG-MISSING}$ merely doubling the root,
+%% \textbf{if necessary}$_{Cont}$, you can triple the root. \textbf{As}$_{Cont}$
+%% you see in this case, the root is tripled to smooth out the voice leading.
+%% \textbf{Otherwise}$_{Comp}$, the tenor would be on the E, \textbf{and}$_{Exp}$
+%% that would (probably) \textbf{result in}$_{Cont}$ parallel fifths moving to beat 4.
+%% \end{fminipage}
+
+%% \begin{fminipage}{0.47\textwidth}
+%% \small
+%% \textbf{Student 3}: Thanks [Student2's name] \textbf{but}$_{Comp}$, are you sure?
+%% I don't see it clear....
+%% \end{fminipage}
+
+%% \begin{fminipage}{0.47\textwidth}
+%% \small
+%% \textbf{Instructor's reply}: Hi [Student3's name]. Please read these threads. 
+%% It has been discussed before. 
+%% Thanks. $<$URL$>$ $<$URL$>$
+%% \end{fminipage}
+%% \caption{Instructor intervenes to clarify. PDTB and EDM+PDTB capture this 
+%% intervention thanks to the many discourse connectives while EDM on its 
+%% own fails. Vocabulary based signals on their own are weak and hence fail 
+%% on threads with fewer content words unless they are supplemented by 
+%% stronger signals. Discourse features are strong even when few.}
+%% \label{fig:example-pdtbEDM}
+%% \end{figure}
+
+While the use of explicit discourse connectives helped the classification 
+task in many cases (e.g., Figure~\ref{fig:example-pdtbEDM} and 
+\ref{fig:example-pdtb}), the PDTB parser does not cover all of 
+the observed discourse connectives or their expressed senses. Examples of 
+connectives (in bold) that were not recognized include:\\
+
+\indent -- ...not \textbf{as nice as} I thought it would be... \\
+\indent -- \textit{ There's \textbf{only so much} melodic expressiveness...\\ 
+\indent \hspace{3mm} when using \textbf{nothing but} chord tones...}\\
+
+\noindent The presence of these connectives in our data is consistent with recent 
+calls \cite{forbesriley2016} to modify the PDTB relation inventory by 
+adding a broader set of tags, such as those suggested by \citeauthor{tonelli2010} 
+(\citeyear{tonelli2010}). Increasing the PDTB's coverage of explicit connectives 
+would likely improve results.
+The added use of implicit connectives may also 
+improve prediction performance, should 
+implicit connective detection and classification be improved. 
+Figure~\ref{fig:example-pdtb} shows an example where implicit connectives may 
+strengthen signals from discourse features. We also note that there are cases, 
+such as in Figure~\ref{fig:example-danger}, which lack discourse and lexical 
+signals. The intervention here is instead triggered by domain knowledge. These 
+excerpts exemplify the difficulty of our prediction task.\\
+
+\begin{figure}[t]
+\small 
+\begin{tabular}{|p{7.8cm}|}
+\hline 
+
+\textbf{Student (Original poster)}: Try to search Epipen auto-injector. 
+It is an epinephrine single-dose injection used to aid in severe 
+allergic reaction or anaphylaxis. It's expiration date 
+is around 1 year \textbf{after}$_{Temp}$ manufacturing date. \\
+%disasterprep-001 docid 5661
+
+\hline \\
+
+\textbf{Instructor's reply}: Be very careful concerning epipens. They are for 
+severe reactions only ... They are prescription only for very good reasons as 
+they affect the heart... It is probably bad for you ... \\
+
+\hline
+
+\end{tabular}
+\caption{An instructor intervention to correct a student's misconception. 
+Both the EDM'15 and E+P %EDM'15 + PDTB
+systems fail to predict this intervention.  
+} 
+\label{fig:example-danger}
+\end{figure}
+
+%\item PDTB only one that's green (1)
+\begin{figure}[t]
+\small 
+\begin{tabular}{|p{7.8cm}|}
+\hline 
+% Min: Is this the original poster / beginning of the thread?
+\textbf{Student 1 (Original Poster)}: Well, hurricanes are \#1 in the summer time. 
+/\textbf{So}/$_{Cont}$ I always have a hurricane kit handy 
+-3 days worth of supplies. 
+/\textbf{Also}/$_{Exp}$,Floods, especially coastal and flash flooding are 
+prevalent. Tornadoes, severe storms with damaging winds and hail. 
+/\textbf{But}/$_{Comp}$ We don't have to worry about 
+snow \textbf{or}$_{Exp}$ fires too much. Earthquakes, either, 
+\textbf{although}$_{Comp}$ we do have a fault line 
+nearby. /\textbf{so far}/ We've had a couple of very minute tremors 
+in my lifetime, \textbf{but}$_{Exp}$ nothing that is really noticed.  \\
+%disasterprep-001 docid 5759 post #1
+
+\hline \\
+
+\textbf{Student 2}: Tornadoes and hail/wind storms are the most prevalent 
+disaster to my area, \textbf{although}$_{Comp}$ we have been hit with just 
+about everything, including a hurricane (Hurricane Ike took our roof)! 
+Flooding is an issue in this area, \textbf{as}$_{Exp}$ is extreme winter 
+weather on occasion; in recent years, significant snowfall (2 feet) in a short 
+period of time basically paralyzes communities such \textbf{as}$_{Comp}$ ours 
+that do not contend with such very often. We have \textbf{also}$_{Exp}$ had 
+significant ice storms that have caused incredible damage. We are well aware 
+of the fact that we could get a significant earthquake, 
+\textbf{though}$_{Comp}$ fortunately we have 
+had only minor issues in that regard...  \\
+%disasterprep-001 docid 5759 2nd post/comment
+
+\hline \\
+
+\textbf{Instructor's reply}: I was involved in some of the response
+after Katrina...  I met some amazing folks and saw some real
+devastation. One thing I never got used to ... Still I was glad to be
+there and the people - amazing ...  \\
+
+\hline
+\end{tabular}
+\caption{An instructor intervention to build common ground with students. The 
+PDTB model predicts this intervention, while EDM'15 and E+P fail. Also shown 
+in the first post are \textit{implicit} connectives, within /../, that are not
+captured.% currently
+}
+% Min: move into prose or shorten
+%% Words frequent in this document are rare in the overall MOOC corpus (e.g., 
+%% tornado, earthquake). 
+%% PDTB connectives don't suffer from such sparsity and are robust.}
+\label{fig:example-pdtb}
+\end{figure}
+
+%% \begin{figure}[h]
+%% \begin{fminipage}{0.47\textwidth}
+%% \small
+%% \textbf{Student (Original poster)}:Try to search Epipen auto-injector. 
+%% It is an epinephrine single-dose injection used to aid in severe 
+%% allergic reaction \textbf{or}$_{Exp}$ anaphylaxis. It's expiration date 
+%% is around 1 year \textbf{after}$_{Temp}$ manufacturing date.
+%% %disasterprep-001 docid 5661
+%% \end{fminipage}
+
+%% \begin{fminipage}{0.47\textwidth}
+%% \small
+%% \textbf{Instructor's reply}: Be very careful concerning epipens. They are for 
+%% severe reactions only ... They are prescription only for very good reasons as 
+%% they affect the heart... It is probably bad for you ...
+%% \end{fminipage}
+%% \caption{An instructor intervention to prevent other students from following 
+%% the potentially dangerous advice that was provided by this student. Both EDM'15
+%% and EDM'15 + PDTB systems fail to predict this intervention, as the student post 
+%% has no explicit connectives or other lexical features.} 
+%% %A rare domain word, 
+%% %\textit{Epipen}, triggers intervention.} 
+%% %I commented this out because it's not the word but the implications of the text 
+%% %surrounding the word that trigger the intervention
+%% %Muthu: I think we can say, we need domain knowledge to catch this intervention 
+%% %from the content... 
+%% %Muthu: also removing /because/. Doesn't seem to fit there as a connective.
+%% %CADE - Agreed. Domain knowledge is needed. & got it
+%% %CADE - the caption and image don't seem to match
+%% \vspace{-0.3cm}
+%% \label{fig:example-danger}
+%% \end{figure}
+
+\begin{table}
+\centering
+\def\arraystretch{1.15}% 
+\small
+\begin{tabular}{|l|r|r|r||r|r|r|}
+\hline 
+&
+\multicolumn{3}{c||}{EDM'15} & 
+\multicolumn{3}{c|}{PDTB}
+\\
+\hline
+\bf Course&  in&  out & gain & in& out & gain\\
+\hline
+{\sc Classic-1} & 28.5& 5.6& -22.9& 22.9& 32.5& 9.5\\
+\hline
+{\sc Classic-2} & 0.0& 23.3& 23.3& 14.5& 21.9& 7.4\\
+\hline
+{\sc Reason-1} & 38.6& 18.8& -19.8& 12.2& 30.3& 18.1\\
+\hline
+{\sc Reason-2} & 28.5& 37.5& 9.0& 21.9& 33.7& 11.8\\
+\hline
+\hline
+{\sc AccTalk} & 51.0& 32.3& -18.7& 32.9& 31.1& -1.8\\
+\hline
+{\sc Clinical-1} & 40.8& 43.9& 3.1& 6.2& 32.6& 26.4\\
+\hline
+{\sc Clinical-2} & 51.4& 64.4& 13.1& 20.6& 20.5& -0.1\\
+\hline
+{\sc Disaster-1} & 9.2& 18.5& 9.3& 8.9& 4.0& -4.8\\
+\hline
+{\sc Disaster-2} & 5.7& 7.8& 2.1&14.7 & 16.1& 1.4\\
+\hline
+{\sc Disaster-3} & 0.0& 10.3& 10.3&2.0 & 7.1& 5.2\\
+\hline
+{\sc Nuclear-1} & 16.1& 8.8& -7.3& 10.8& 23.9& 13.0\\
+\hline
+{\sc Nuclear-2} & 14.7& 21.2& 6.5& 21.7& 20.3& -1.4\\
+\hline
+{\sc Nutrit-1} & 69.0& 69.1& 0.1& 6.7& 9.9& 3.18\\
+\hline
+{\sc Nutrit-2} & 47.7& 49.3& 1.6& 9.7& 14.8& 5.11\\
+\hline
+\hline
+\textbf{Macro avg.}& 30.0& 32.6& \textbf{2.6}& 16.4& 25.3& \textbf{8.9}\\
+\hline
+\textbf{Weighted} & 32.0& 34.7& \textbf{2.7}& 11.8& 23.4& \textbf{11.6}\\
+\textbf{macro avg.}& & & & & &\\
+\hline
+\end{tabular}
+\caption{Prediction performance of EDM'15 and PDTB 
+systems for each of the 14 MOOCs in the (in)-domain 
+and (out)-of-domain evaluations.}
+
+% Min: move discussion into text, not in caption, or shorten
+%%  PDTB appears to scale 
+%% its performance (in $F_1$ score) better than EDM and hence 
+%% could be more robust to domain-changes than the EDM vocabulary 
+%% based features.}
+\label{tab:pdtb-robust}
+\end{table}
+
+\noindent \textbf{RQ2.} {\it Are PDTB features more robust than vocabulary-based  features?}
+
+%Since PDTB features derive from discourse connectives that are not dependent on 
+%course or domain specific vocabulary, we hypothesise that PDTB features are 
+%more robust than vocabulary based features.
+%CADE - I think we can cut the above paragraph if you're worried about space
+%Muthu - yes, as it is, this reads good. The above para repeats the RQ2 stmt.
+Consider the performance differences of the EDM'15 and PDTB models between the 
+in-domain and out-of-domain evaluation 
+settings~(see Table~\ref{tab:pdtb-robust}). 
+Using PDTB features results in an average improvement of 11.6\% when 
+evaluating models out-of-domain, whereas EDM'15 only improves by 2.7\%.
+EDM'15 performance drops greatly on {\sc Classic-1}, {\sc Reason-1}, and {\sc 
+Acctalk} due to the out-of-domain data; in contrast, PDTB gains on 
+10 of the 14 courses. In the example in Figure~\ref{fig:example-pdtb}, EDM'15 
+and E+P fail while PDTB predicts correctly. Frequent words from this course 
+(e.g., ``tornado'', ``earthquake'') are rare across MOOCs; this weakens the 
+EDM'15 model. 
+
+These findings suggest that PDTB may result in further gains were data added 
+from more courses, while that of the vocabulary-based EDM'15 model may worsen or 
+not scale. Similarly, Chandrasekaran et al. 
+(\citeyear{chandrasekaran2015learning}) 
+did not see improvements in the EDM'15 model when they went from a 13 course 
+training set to 60 courses. This demonstrated lack of robustness in the EDM'15
+model is not surprising given its abundant use of domain-specific vocabulary. 
+There were considerably more out-of-domain unigram features (76,382) than 
+%There were 76,382 out-of-domain unigram features which is considerably larger than the  
+in-domain unigram features (15,161, on average). This steep increase in feature 
+space and resulting sparsity hampers the EDM'15 model's ability to benefit from 
+a scaled corpus. In contrast, both in-domain and out-of-domain versions of the 
+PDTB model have the same number of features.
+%when tested in-domain and out-of-domain.
+
+%CADE - these numbers don't make sense to me given the argument that surrounded them. (Were they accidentally inserted in the wrong place?)
+%Muthu - point is missed completely. More unigrams in the scaled data creates sparsity
+% Scaling should should strengthen features. however unigram models from different MOOCs
+% do not share vocabulary. So # of words or features increase when courses are merged to create a common vocabulary. Their counts do not. This very bad for machine learning.
+%CADE - I contextualized it a little more. It was requiring readers to make too many inferences based on their background knowledge. Please recheck for accuracy
+%Muthu - slightly changed the last line since it wasn't accurate. in-domain and out-of-domain data train models differently. so they are different versions of the same model.
+
+%% %\item PDTB only one that's green (1)
+%% \begin{figure}
+%% \begin{fminipage}{0.47\textwidth}
+%% \small
+%% % Min: Is this the original poster / beginning of the thread?
+%% \textbf{Student 1}: Well, hurricanes are \#1 in the summer time. 
+%% I always have a hurricane kit handy -3 days worth of supplies. Floods, 
+%% especially coastal and flash flooding are prevalent. Tornadoes, severe 
+%% storms with damaging winds and hail. We don't have to worry about snow or 
+%% fires too much. Earthquakes, either, \textbf{although}$_{Comp}$ we do have 
+%% a fault line nearby. We've had a couple of very minute tremors in my 
+%% lifetime, \textbf{but}$_{Exp}$ nothing that is really noticed. 
+%% %disasterprep-001 docid 5759 post #1
+
+%% \end{fminipage}
+%% \begin{fminipage}{0.47\textwidth}
+%% \small
+%% \textbf{Student 2}: Tornadoes and hail/wind storms are the most prevalent 
+%% disaster to my area, \textbf{although}$_{Comp}$ we have been hit with just about 
+%% everything, including a hurricane (Hurricane Ike took our roof)! Flooding is an 
+%% issue in this area, \textbf{as}$_{Exp}$ is extreme winter weather on occasion; in 
+%% recent years, significant snowfall (2 feet) in a short period of time basically 
+%% paralyzes communities such \textbf{as}$_{Comp}$ ours that do not 
+%% contend with such very often. We have \textbf{also}$_{Exp}$ had significant ice 
+%% storms that have caused incredible damage. We are well aware of the fact that we 
+%% could get a significant earthquake, \textbf{though}$_{Comp}$ fortunately we have 
+%% had only minor issues in that regard... 
+%% %disasterprep-001 docid 5759 2nd post/comment
+%% \end{fminipage}
+%% \begin{fminipage}{0.47\textwidth}
+%% \small
+%% \textbf{Instructor}: I was involved in some of the response after Katrina... 
+%% I met some amazing folks and saw some real devastation. One thing I never got 
+%% used to ... Still I was glad to be there and the people - amazing ... 
+%% \end{fminipage}
+%% \caption{An instructor intervention sharing his experiences to build common 
+%% ground with students. PDTB model predicts this intervention while EDM models 
+%% fail. Words frequent in this document are rare in the overall MOOC corpus (e.g., 
+%% tornado, earthquake). 
+%% PDTB connectives don't suffer from such sparsity and are robust.}
+%% \label{fig:example-pdtb}
+%% \end{figure}
+
+%disasterprep-001 docid 5759 this is the 4th post
+%\item EDM+PDTB green (1), PDTB green green (1) while EDM orange (-1) 
+%\item EDM+PDTB green (1) while PDTB and EDM orange (-1) 
+%I've included the whole post/comment but we'll probably want to select the shorter ones or an illustrative sub-section of the post
+%\begin{itemize}
+%\item Being inspired by the supplemental calculations, I was wondering how much Uranium is contained in some pieces of Uranium glass that I have at home,how much ore was needed for this and how much energy could be gained from it, so I did some detailed calculations in order to use the gained knowledge. Maybe anybody else has Uranium glass collectables at home and is wondering,so I like to share this example (no guarantee for possibly hidden mistakes). The heaviest piece I own is about 1,160 gram (a nice massive mushroom made in Murano/Italy), the average percentage of Uranium oxide (in form of UO2 as I read) added to the glass melting mass is said to be about 2\%,so it has (1,160/100) * 2 = 23.2 gram of Uranium oxide To be more precise, I found out how much U235 and U238 is in these 23.2gram of UO2 Percentage of U235 is 0.711\% 23.2/100 * 0.711 = 0.165 gram U235 Assuming that there is only U235 and U238, the U238 fraction will be 23.2 - 0.165 = 23.035 gram U238 Getting the molecular mass in order to divide to Uranium from the Oxygen in the next step For U235 1 mole of U235 + 2 moles of O = (1*235) + (2*16) = 267 Fraction = 235 gram / 267 gram = 0.88 0.165 gram * 0.88 = 0.145gram For U238 1 mole of U238 + 2 moles of O = (1*238) + (2*16) = 270 Fraction = 238 gram / 270 gram = 0.881 23.035 gram * 0.881 = 20.294 gram Now getting the way back to the ore, where Uranium appears as U3O8 First finding the fraction of U in U3O8 For U235 3 moles of U235 + 8 moles of O = (3*235) + (8*16) = 833 Fraction = 705 gram / 833 gram = 0.846 For U238 3 moles of U238 + 8 moles of O = (3*238) + (8*16) = 842 Fraction = 714 gram / 842 gram = 0.848 Assuming the 0.145 gram U235 are 84.6 \% and the 20.294 gram of U238 are84.8 \%, now calculating the 100\% with the Oxygen added. (0.145/84.6) * 100 = 0.171gram (20.294/84.8) * 100 = 23.932gram Well, possibly could abbreviate the calculation by not dividing the Oxygen from UO2 and again adding it to U3O8, but this may be more accurate according to little differences in the resulting numbers. Together these are 0.171 + 23.932 = 24.103 gram of U3O8 Assuming that the used ore had about 0.5 \% of Uranium, there had been a need of (24.103 gram / 0.5) * 100 = 4820.6 gram = 4.82 kilogram As http://web.ead.anl.gov/uranium/guide/facts/ says,a ton of natural Uranium can produce about 40 mio. kW/h, so finally how much energy could be produced from the Uranium that was used in the glass? Converting tons to grams 1 ton = 1,000 kilogram = 1,000,000 gram If 1,000,000 gram produce 40,000,000 kW/h than 1 gram produces 40,000,000/1,000,000= 40 kW/h But in this case there are 24.103 gram, so we have 24.103 * 40 = 964 kW/h In Europe the average use is between 1,500 and 3,000 kW/h per year per person depending on individual habits, so it would cover a third to a half of a persons yearly need for energy.
+%nuclear science-001 docid 2536
+
+%\item Careful with the use of tons. In general American English, a ton refers to 2000 pounds, while a tonne or Metric ton refers to 1000 kilograms. The fact your link says one ton of ore, but uses metric tons later probably means they are using the American Short ton, which is ~907 kg. Fun calculation nonetheless.%nuclearscience-001 docid 2536
+%\item instructor: It may be easier to figure 202.5 MeV of energy per fission. You know your mass, molar mass, and Avogadro's number. So just use those to calculate the MeV and then convert to Joules by using this factor: 1.60217657 — 10\^-13 Joules/MeV. %nuclear science-001 docid 2536
+
+%\item Not very fictional except for having so much emergency backup power that you don't realize the power is off and the microwave won't work.For most of us, backup power is a flashlight or two and perhaps a small can of alcohol fuel that might heat a couple mugs of soup but not much more. %disasterprep-001 docid 6811
+%\item instructor: Panicing after only 3 hours even in the middle of the storm is exactly what we are trying to avoid. [FirstName] %disasterprep-001 docid 6811 %there were 5 posts preceding intervention the above example is the 3rd example
+
+% Muthu: these features have some systematic weirdness. Couldn't figure out what is going wrong yet. 
+%%Its PDTB vector is empty.. and something has caused its EDM+PDTB vector to truncate. Its EDM only vector is good though. I checked other vectors in the file. they are all good. There is some data issue with the feature generation for this thread. We should omit this case. Its not surprising that its prediction is weird (that is EDM and PDTB or both wrong yet EDM+PDTB is right).
+
+% Muthu: I am picking examples where EDM is orange, but EPDTB and EDM+PDTB is green from NUS MOOCs.
+%\item Hi [prior post student's first name] you make an excellent and relevant point. I am struggling with my personal plan when I have to consider 10 dogs, six puppies and the 5 ponies and two pigs. I do not have a horse box or trailer. Most rest centres for evacuation will only cope with a cat in a crate and at most 2 dogs per family I can imagine the reaction if I turn up with our lot! I anticipate someone telling us to evacuate or shelter upstairs and expecting me to move the ponies up stairs in the house. Given the wide and extensive flooding possibilities I doubt friends with horseboxes would be able to assist. %disasterprep-002 docid 8733, 2nd post/comment
+%\item instructor: All, Excellent point - as you can see in the example Peer Assessment, I have accounted for my beloved animals, (3 chihuahuas, and 1 cat). Its imperative to keep in mind the animal's needs, in particular horses - which I am quite familiar with, require a much larger amount of water and heavier bags/larger quantity of feed than others. I would be sure to keep a dog/cat first aid, food, ID and registration copies in your "Jump Kit" as well as "Home Kit" in your Peer Assessment or general planning. Obviously, depending on the situation would dictate if you should shelter in place, or evacuate. I'm going to look into this further, as this is a crucial part of disasters. We saw with Hurricane Katrina how many animals were evacuated or abandoned in flooded regions.  I will look into this! Nice posts! [TA FirstName] %disasterprep-002 docid 8733 4th post/comment
+
+%\item Im unable to complete module 3 self assessment because super tracker doesnt cater for the foods I eat (im based in the UK). Is there a way of doing this using my fitness pal %nutritionforhealth-002 docid 2159 1st post
+%\item instructor: [Student name from prior post], That is not a problem.Â We do not grade/evaluate the self-assessments, but they are highly recommended to really experience the course.Â You may use any tracking system that you wish.Â We hope that all of our students use some type of tracking system to get the experience of using one, learn positives/negatives, and are able to get feedback on the foods they eat and the type of activity they participate in.Â Simply writing down everything in a journal would be a type of tracking.Â Using a tracking system like super tracker does allow you to get a breakdown of Carbs/protein/... vitamins... etc. that many find to be very useful and is similar to how a dietician might track and help a patient.Â I hope this helps. %nutritionforhealth-002 docid 2159 2nd post
+
+%\textbf{RQ3.} Could an oracle discourse parser improve the %PDTB results significantly? \\
+% * <cdemmans@gmail.com> 2016-09-04T23:34:32.852Z:
+%
+% I thought this was more of a discussion point rather than a RQ of this exploration?
+%
+% ^.
+%by dissecting its occurrence statistics across different forumtypes. 
+%We ask: Do discourse relations vary significantly across forumtypes?
+%Next, to know the limits of the performance improvement from 
+%our methods we ask: 
+%Would better discourse feature extraction improve prediction performance?
+%\textbf{Do discourse relations vary significantly across forumtypes?}
+%Table~\ref{tab:discuss} shows the average number of relations in a thread across 
+%the three different types to which threads are assigned to in the classic and 
+%reason corpora. The averages, in particular, across forumtypes among intervened 
+%threads differs significantly.
+
+%The most significant feature in predicting interventions in the baseline system 
+%identified by prior work was forumtype. We observed that the performance of the 
+%baseline system on the reason corpus was mainly due to this feature since the `homework' 
+%forumtype had the most interventions in the reason corpus. All the correct 
+%predictions made by the baseline system on the reason corpus were also from the 
+%`homework' forumtype. Interestingly, the same was observed in the system that used just 
+%the PDTB features (row 13 of Table~\ref{tab:discuss} show this performance). This indicates 
+%that the occurrence frequency of PDTB relations discriminates forumtypes.
+%\end{itemize}
+%\textbf{Other PITT Examples}
+%\begin{itemize}
+%\item EDM is only green column (1)
+%\begin{itemize}
+%\item Other then agreeing with the statements on transfats I have to disagree with all the advice on saturated and unsaturated fats. The evidence and all the meta data is now indicating that there is no difference to health outcomes when it comes to saturated v unsaturated fats. It would appear that this is no longer even debatable. (how much fat we should consume still is). There are now loads of reports and evidence articles to support I have just posted one from Time magazine but as I say this evidance is now widly asssumed as correct.   http://healthimpactnews.com/2014/time-magazine-we-were-wrong-about-saturated-fats/  %nutritionforhealth-002 docid 8040 post/comment 1
+%\item My comment about anti-science was directly broadly at that segment of the population that is prone to forming beliefs based on anecdote, religion, superstition, "what we was taught", and so on. Your highly definitive statements in the original post didn't appear to recognize the highly debatable nature of a lot of information on the subject of nutrition including fats and coconut oil. Â Plus your reference was to a site that falls a bit short of scientific objectivity. You make some valid points in your subsequent posts. I would like to know the comparative smoking points of coconut oil versus other common cooking oils. "I was told" that coconut oil actually has a lower smoking point than other oils. %nutritionforhealth-002 docid 8040, 9th post/comment
+%\item I have a good friend who is a dietician.  I asked why all the nutrition books i read disagree with each other. She said because we know almost nothing about nutrition, almost all research is tainted with interests defining what the studies must conclude if they are going to get published. She said avoid sugar and starch, and eat a wide variety of veggies.The wide variety of veggies is important because we don't yet know what all the nutrients are.  If you eat peas (or any few things) every day for your veggies, you are missing whatever nutrients might be in other veggies that peas don't offer and that we haven't yet identified anyway.Variety.  No processed food, no starches, no sugars, lots of veggies.With that diet, a few french fries once a month won't harm you, but every week they will %nutritionforhealth-002 docid 8040 12th post/comment
+%\item instructor:   I just want to weight in here quickly! This is such an interesting discussion/current area of debate. Some systematic reviews have shownbeneficial effects of reducing dietary saturated fat (Hooper, 2011) whileothers have shown no effects of saturated fat reduction on CVD risk (Chowdhury,2014; Siri-Tarino, 2010). We need to be careful to look at these reviews and what studies and types of studies are included (e.g., observational vs.clinical trials with random assignment to intervention groups). Many intervention studies that have shown a beneficial effect in a reduction in saturated fat replaced saturated fat with polyunsaturated fat. Thus, we are still recommending a reduction and/or modification in saturated fat intake (and trans fat) which may be protective of cardiovascular events. This combined with other healthy dietary habits (e.g., replacement of saturated fat with polyunsaturated fat, increased soluble fiber intake, consumption of plantsterols, cutting back on refined grains and added sugars, etc) would have the greatest impact on CVD risk factors. Clearly, more research in this area is warranted.   %nutritionforhealth-002 docid 8040 20 posts b/4 instructor post
+%\end{itemize}
+%\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%CADE - I'm reframing the limitations as a positive (as per our last meeting)
+%CADE - I'm moving the discussion of limitations of pdtb into the RQ1 section as we had 
+%discussed in our meeting and commenting it out here. I will then reframe it to better %fit that section
+%A natural question that arise is: would a better discourse feature extraction 
+%improve prediction performance? 
+\textbf{Potential Improvements.} The above results indicate that performance 
+improvements due to PDTB features scale better than vocabulary-based features.
+To harness similar improvements from large scale data, the performance and 
+robustness of the discourse parser needs to be improved. Current limitations 
+of discourse parsers (e.g., their inability to process equations and symbols, 
+lack of near real-time output) inhibit scaling the predictive power of PDTB 
+and E+P models. Discourse parser improvements would therefore enable the 
+development and use of better predictive models.
+%Improvements to these tools would therefore enable the 
+%development and use of better predictive models.
+%so that instructors and students can benefit from their use.
+%CADE - People should check this. It might now be a little too hand wavy/confident
+
+%For the said reason we do not use a 
+%large corpus such as those used in, \cite{chandrasekaran2015learning}. 
+%Our results are still 
+%comparable to the prior work since we rerun their system on our corpus. 
+
+%disasterprep-001 docid 5661
+
+%\textbf{Instructor's reply}: Be very careful concerning epipens. They are for 
+%severe reactions only ... They are prescription only for very good reasons as 
+%they affect the heart... It is probably bad for you ...
+
+%intervention. 
+%\end{fminipage}
+%\caption{An instructor intervention to prevent other students from following 
+%the potentially dangerous advice that was provided by this student. Both EDM 
+%and EDM+PDTB systems fail to predict this intervention as the student post has 
+%no \textit{explicit} connectives or other lexical features.} %A rare domain word, 
+%\textit{Epipen}, triggers intervention.} 
+%I commented this out because it's not the word but the implications of the text 
+%surrounding the word that trigger the intervention
+%\label{fig:example-danger}
+%\end{figure}
+
+%We also observe that the list of PDTB connectives and their senses do not cover 
+%the observed discourse connectives and their expressed senses. Following are 
+%some examples of such connectives (in bold).
+
+%\textit{..not \textbf{as nice as} I thought it would be..}
+	
+%\textit{ There's \textbf{only so much} melodic expressiveness...
+%when using \textbf{nothing but} chord tones..}
+
+%A broader set of tags such as \cite{tonelli2010} had proposed 
+%to modify the PDTB inventory of relations for annotating spoken 
+%dialogue corpus could be of help. A similar observation was made 
+%by \cite{forbesriley2016} in student essays domain as well.
+% and you are done (incorrectly ided as discourse sense)
+
+%Capturing (dis)agreements in the reason corpus was difficult 
+%due to the variety and ambiguity of phrases. Some phrases also indicated implicit agreement.  
+%Following are some examples of such phrases (in bold):
+
+%\textit{ \textbf{Good point.} But I think this argument is only valid if we accept extreme moral realism….}
+%\textit{\textbf{Thanks for the alternative formulation.} ...}
+%\textit{\textbf{Thanks for raising a very interesting point}...}
+%\textit{\textbf{Sorry John,} but i have to take issue with that...}
+%\textit{\textbf{Very true.} How that happened is beyond the scope of this couse...}
+%\textit{Hi Rachel - \textbf{what an interesting discussion} we've come upon!}
+
+%Cross post features: Agreement-Disagreement
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conclusion}
+\label{sect:conclusion}
+%In this study, augmenting an existing state-of-the-art model with PDTB relations 
+%resulted in predictions of instructor intervention that were on average as good or better than current approaches.
+% Muthu: this is under claiming. on average we better the state-of-the-art
+In this study, we better the state-of-the-art for intervention prediction 
+by augmenting it with PDTB relation based features. Further, on select MOOC offerings PDTB relations alone performed comparably to the state-of-the-art.
+Unlike vocabulary based models, PDTB based features were shown to be robust to 
+domain differences across MOOCs. This domain independence supports the improved prediction of instructor interventions.
+%% Min: still needs work.  Conclusion is weak.
+The current $F_1$ scores are still markedly low. Better modeling of the instructor may help boost performance. We plan to tackle this in two ways.  First, we will model instructor intervention based on the threads they have seen because they cannot intervene in threads that they have not seen. Second, we will model intervention based on the role that different types of instructional staff play. We expect teaching assistants, course alumni (also known as ``community TAs'' and ``mentors''), and faculty to have different motivations for intervening. They may also dedicate different amounts of time to course forums. As a result, modelling these factors or individual instructor preferences could improve prediction performance. 
+
+%we believe instructors intervene only when they have viewed the thread. In
+%certain cases, we believe instructors may miss important thread	
+%updates	between their interactive sessions. Modeling which
+%threads have been exposed to the instructor may prove important.
+%Secondly, instructors different by their role in the course -- we
+%believe teaching assistants, course alumni (also known as
+%``community TAs''), and	faculty	will have different motivations
+%and appetite for intervention. Modeling individual instruction
+%staff may also improve prediction performance.
+
+%% Given the current low $F_1$ scores, we are interested to see 
+%% if instructor interventions are conditioned on their 
+%% viewing a thread. Such conditional assumptions may 
+%% reduce the false positive rate and improve precision. We may also analyse 
+%% the subjectivity of interventions. That is, whether the effectiveness 
+%% of prediction depends on instructor identity?
+%CADE - You may want to read a bit about new post bias to inform your work on conditioning the model (especially your idea of how the user interface influences which threads instructors respond to
+%Muthu - right now the literature I refer to for this problem is from the Information 
+%retrieval area. they call the general problem as position bias that is, the position 
+%at which an item appears in a list typically a search engine results page. Is post bias similar to this?
+%CADE - They're conceptually related. It's a bias towards looking at/responding to new posts (old posts are pushed down the page and don't get seen). This was a pointer for future work since there has been a fair bit of work in the area of which posts get responded to by whom with the education literature
+
+\section*{Acknowledgments}
+This research is funded in part by NUS Learning Innovation Fund --
+Technology grant \#C-252-000-123-001, and by the Singapore National
+Research Foundation under its International Research Centre @
+Singapore Funding Initiative and administered by the IDM Programme
+Office, and by an NUS Shaw Visiting Professor Award. The research is also 
+funded in part by the Learning Research and Development Center at the 
+University of Pittsburgh and by a Google Faculty Research Award. We would like 
+to thank the University of Pittsburgh's Center for Teaching and Learning, for 
+sharing their MOOC data. 
+%\newpage
+%\balance
+\bibliography{2aaai}
+\bibliographystyle{aaai}
+
+\end{document}

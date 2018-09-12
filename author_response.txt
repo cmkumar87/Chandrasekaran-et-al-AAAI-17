@@ -1,0 +1,58 @@
+We thank the reviewers for their introspection of our results and constructive feedback.
+
+REVIEW 1
+	As said in our Conclusion, we plan to model instructor intervention based on the threads they have 
+	seen and based on the role that different types of instructional staff play.
+
+1.  Our method is also suitable for other online learning 
+	environments too but not to web forums. PDTB connectives occur in 
+	complete grammatical sentences. Although MOOC forums are user generated they more 
+	grammatical than web forums.
+
+2.	We agree that the complete solution is to predict
+	interventions for each post rather than once for each thread. However, post level prediction 
+	is different from our current problem since threads become more visible once intervened. 
+	Further, the purpose and progression of a discussion needs tracking which differ between  
+	humanities and hard science subjects. While we do not handle it in this work discourse 
+	connectives could be useful for post level prediction too.
+
+3. 	Yes, the distribution for MOOC corpus are based on tags from  
+	the discourse parser. We acknowledge the possibility pointed 
+	out. However, we cite Faulkner et al. (2014), Wang et al (2012), 
+	Swanson et al (2015) who use the parser without retraining. Not retraining is reasonable since retraining  
+	needs annotated corpus creation without an estimate of the parser's utility 
+	for the task. We will consider annotation in our future work.
+	
+4. 	This is not an error.
+	Courses in Table 2 with 0 F_1 scores have have very few interventions (see Table 1).
+	Five fold cross validation further diminishes the number of interventions to  
+	3 to 4 per fold. So neither model is able to predict any intervention for these 
+	courses in the in-domain evaluation.
+
+5. 	We agree that all the models have a high false positive rate. However, for our problem, 
+	recall is more important than precision since it is costlier to miss interventions than 
+	to predict more.
+
+6 and 7.  Both these are typos which we regret. 
+
+	We compare the gains made in weighted macro average on page 5, para 2.
+	We state that, "The EDM'15 model only improved by 4.3%, whereas the E+P model improved 
+	by 6.9%". This should instead be: "The EDM'15 model only improved by 2.7%, 
+	whereas the E+P model improved by 5.7%".
+
+REVIEW 2
+The discussion of research question 2 and Table 5 is somewhat confusing...
+	No. The comparison in Table 5 and research question 2 is between EDM 
+	and PDTB model which has just the PDTB features.
+
+We agree with your suggestion. Due to space constraints we only highlight them in Conclusion and Abstract. 
+They are:
+		We better the state-of-the-art for intervention prediction 
+		by augmenting it with PDTB relation based features. Further, on select MOOC 
+		offerings PDTB relations alone performed comparably to the state-of-the-art.
+		Unlike vocabulary based models, PDTB based features were shown to be robust 
+		to domain differences across MOOCs.
+
+REVIEW 3
+	We find that 'Contingency' and 'Expansion' relations contribute 
+	the most perhaps due to their higher occurrence in the corpus.
